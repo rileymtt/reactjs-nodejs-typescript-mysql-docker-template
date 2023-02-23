@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  mysqldb:
+    image: mysql:5.7
+    container_name: realbewhy_mysql
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      - MYSQL_ROOT_PASSWORD=$DB_PASSWORD
+      - MYSQL_DATABASE=$DB_DATABASE
+    ports:
+      - $DB_PORT:$DB_PORT
+    volumes:
+      - db:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - backend
+
+  api:
+    container_name: realbewhy_node
+    depends_on:
+      - mysqldb
+    build: ./api
+    restart: always
+    env_file: ./.env
+    ports:
+      - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
+    environment:
+      - DB_HOST=mysqldb
+      - DB_USER=$DB_USER
+      - DB_PASSWORD=$DB_PASSWORD
+      - DB_DATABASE=$DB_DATABASE
+      - DB_PORT=$DB_PORT
+      - CLIENT_ORIGIN=$CLIENT_ORIGIN
+      - NODE_DOCKER_PORT=$NODE_DOCKER_PORT
+    networks:
+      - backend
+      - frontend
+
+  ui:
+    container_name: realbewhy_react
+    depends_on:
+      - api
+    build:
+      context: ./ui
+      args:
+        - REACT_APP_API_BASE_URL=$CLIENT_API_BASE_URL
+    ports:
+      - $REACT_LOCAL_PORT:$REACT_DOCKER_PORT
+    networks:
+      - frontend
+    restart: always
+
+volumes:
+  db:
+
+
+networks:
+  backend:
+  frontend:
